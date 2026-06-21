@@ -36,6 +36,10 @@ python3 .agents/notebook-pedagogical-enrichment/scripts/notebook_helper.py inspe
 
 ### Step 2: Compute Exact Metrics (Dry Run)
 Before writing explanations, run the notebook's code (using the workspace virtual environment, e.g., `.venv/bin/python3`) to obtain the exact training/testing scores (like MSE, $R^2$, accuracy, etc.).
+You can use the local extractor utility to automatically execute the notebook and dump all cell outputs and metrics:
+```bash
+python3 .agents/notebook-pedagogical-enrichment/scripts/notebook_metric_extractor.py <path_to_notebook.ipynb>
+```
 Reporting exact numbers (e.g., *“the test $R^2$ is 0.217 for OLS but 0.994 for Lasso”*) makes the explanations extremely authentic and helpful.
 
 ### Step 3: Write Rich Markdown Explanations
@@ -50,22 +54,38 @@ Explanations must follow best practices in technical writing and pedagogy:
 - **Learning Curves**: Explain how to diagnose bias/variance by looking at the gap and convergence of training and validation scores.
 
 ### Step 4: Update the Notebook Programmatically
-Always edit Jupyter notebooks by loading the JSON in Python, manipulating the `cells` list, and saving the JSON back. This preserves metadata, notebook formatting, and prevents syntax issues.
-
-Use the following stateful matching script structure:
-```python
-import json
-
-def make_markdown_cell(text):
-    lines = [line + "\n" for line in text.split("\n")]
-    if lines and lines[-1] == "\n":
-        lines.pop()
-    elif lines:
-        lines[-1] = lines[-1].rstrip("\n")
-    return {"cell_type": "markdown", "metadata": {}, "source": lines}
-
-# Load, reconstruct nb["cells"] by matching cell signatures, and write back.
+Always edit Jupyter notebooks programmatically. You can use the generic enrichment script to apply Markdown/Code cell insertions and replacements from a JSON specification:
+```bash
+python3 .agents/notebook-pedagogical-enrichment/scripts/enrich_runner.py -n <path_to_notebook.ipynb> -s <path_to_spec.json>
 ```
+
+#### Spec JSON File Format Example:
+```json
+[
+  {
+    "match_type": "prefix",
+    "target": "RANDOM_SEED = 2",
+    "action": "insert_after",
+    "cell_type": "markdown",
+    "source": [
+      "### Configurazione dell'Ambiente\n",
+      "Prima di iniziare importiamo..."
+    ]
+  },
+  {
+    "match_type": "exact",
+    "target": "distorsion = sum(...)",
+    "action": "replace",
+    "cell_type": "markdown",
+    "source": "Nuovo testo esplicativo..."
+  }
+]
+```
+
+Specifications support:
+- `match_type`: `prefix`, `exact`, `contains`
+- `action`: `insert_before`, `insert_after`, `replace`, `append`
+- `cell_type`: `markdown` or `code`
 
 ### Step 5: Validation
 Verify that the output notebook is valid JSON and loads properly:
